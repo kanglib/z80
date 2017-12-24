@@ -1,3 +1,8 @@
+# z80
+A modified emulator that solves
+[[SECCON 2017 Quals] z80](https://ctftime.org/task/5045).
+
+## Original README
 z80emu
 Version 1.1.3
 

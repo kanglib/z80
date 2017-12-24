@@ -13,6 +13,8 @@
 #include <time.h>
 #include "zextest.h"
 #include "z80emu.h"
+#include <string.h>
+#include "z80user.h"
 
 #define Z80_CPU_SPEED           4000000   /* In Hz. */
 #define CYCLES_PER_STEP         (Z80_CPU_SPEED / 50)
@@ -20,17 +22,18 @@
 
 static void	emulate (char *filename);
 
+static unsigned char mem[] = {
+	0x22, 0x47, 0x00, 0x3d, 0x53, 0x77, 0x23, 0x3d, 0x45, 0x77, 0x23, 0x3d, 0x43,
+	0x77, 0x23, 0x77, 0x23, 0xc5, 0x0c, 0x77, 0x23, 0xc5, 0xfd, 0x77, 0x23, 0x3d,
+	0x7b, 0x77, 0x23, 0x39, 0x44, 0x00, 0x47, 0xc5, 0x46, 0x31, 0x44, 0x00, 0x78,
+	0x31, 0x46, 0x00, 0xfd, 0x22, 0xf9, 0x1e, 0x00, 0xfd, 0x7b, 0xf1, 0x1e, 0x00,
+	0x77, 0x23, 0x39, 0x45, 0x00, 0x3e, 0x31, 0x45, 0x00, 0xc1, 0x1e, 0x00, 0x3d,
+	0x7d, 0x77, 0x75, 0x03, 0x0b, 0x09,
+};
+
 int main (void)
 {
-	time_t	start, stop;
-
-	start = time(NULL);
-        emulate("testfiles/zexdoc.com");
-        emulate("testfiles/zexall.com");        
-	stop = time(NULL);
-	printf("Emulating zexdoc and zexall took a total of %d second(s).\n",
-		(int) (stop - start));
-
+	emulate(NULL);
         return EXIT_SUCCESS;
 }
 
@@ -38,57 +41,13 @@ int main (void)
 
 static void emulate (char *filename)
 {
-        FILE   	*file;
-        long   	l;
 	ZEXTEST	context;
-        double 	total;
-
-        printf("Testing \"%s\"...\n", filename);
-        if ((file = fopen(filename, "rb")) == NULL) {
-
-                fprintf(stderr, "Can't open file!\n");
-                exit(EXIT_FAILURE);
-
-        }
-        fseek(file, 0, SEEK_END);
-        l = ftell(file);
-
-        fseek(file, 0, SEEK_SET);
-        fread(context.memory + 0x100, 1, l, file);
-
-        fclose(file);
-
-        /* Patch the memory of the program. Reset at 0x0000 is trapped by an
-         * OUT which will stop emulation. CP/M bdos call 5 is trapped by an IN.
-	 * See Z80_INPUT_BYTE() and Z80_OUTPUT_BYTE() definitions in z80user.h.
-         */
-
-        context.memory[0] = 0xd3;       /* OUT N, A */
-        context.memory[1] = 0x00;
-
-        context.memory[5] = 0xdb;       /* IN A, N */
-        context.memory[6] = 0x00;
-        context.memory[7] = 0xc9;       /* RET */
-
-	context.is_done = 0;
-
-        /* Emulate. */
-
-        Z80Reset(&context.state);
-        context.state.pc = 0x100;
-        total = 0.0;
+	memcpy(context.memory, mem, sizeof(mem));
+	Z80Reset(&context.state);
 	do
-
-                total += Z80Emulate(&context.state, CYCLES_PER_STEP, &context);
-
-	while (!context.is_done);
-        printf("\n%.0f cycle(s) emulated.\n" 
-                "For a Z80 running at %.2fMHz, "
-                "that would be %d second(s) or %.2f hour(s).\n",
-                total,
-                Z80_CPU_SPEED / 1000000.0,
-                (int) (total / Z80_CPU_SPEED),
-                total / ((double) 3600 * Z80_CPU_SPEED));
+		Z80Emulate(&context.state, CYCLES_PER_STEP, &context);
+	while (context.state.status != Z80_STATUS_HALT);
+	printf("%s\n", context.memory + 0x47);
 }
 
 /* Emulate CP/M bdos call 5 functions 2 (output character on screen) and 9

@@ -94,6 +94,7 @@ extern "C" {
 #define Z80_READ_BYTE(address, x)                                       \
 {                                                                       \
         (x) = ((ZEXTEST *) context)->memory[(address) & 0xffff];	\
+	(x) = ((x) & ~3) | ((x) & 2) >> 1 | ((x) & 1) << 1;		\
 }
 
 #define Z80_FETCH_BYTE(address, x)		Z80_READ_BYTE((address), (x))
@@ -105,22 +106,28 @@ extern "C" {
 	memory = ((ZEXTEST *) context)->memory;				\
         (x) = memory[(address) & 0xffff]                                \
                 | (memory[((address) + 1) & 0xffff] << 8);              \
+	(x) = ((x) & ~0x303) | ((x) & 0x202) >> 1 | ((x) & 0x101) << 1;	\
 }
 
 #define Z80_FETCH_WORD(address, x)		Z80_READ_WORD((address), (x))
 
 #define Z80_WRITE_BYTE(address, x)                                      \
 {                                                                       \
-        ((ZEXTEST *) context)->memory[(address) & 0xffff] = (x);	\
+	unsigned char	y = (x);					\
+									\
+	y = (y & ~3) | (y & 2) >> 1 | (y & 1) << 1;			\
+        ((ZEXTEST *) context)->memory[(address) & 0xffff] = y;	    \
 }
 
 #define Z80_WRITE_WORD(address, x)                                      \
 {                                                                       \
 	unsigned char	*memory;					\
+	unsigned short	y = (x);					\
 									\
+	y = (y & ~0x303) | (y & 0x202) >> 1 | (y & 0x101) << 1;		\
 	memory = ((ZEXTEST *) context)->memory;				\
-        memory[(address) & 0xffff] = (x); 				\
-        memory[((address) + 1) & 0xffff] = (x) >> 8; 			\
+        memory[(address) & 0xffff] = y; 				\
+        memory[((address) + 1) & 0xffff] = y >> 8; 			\
 }
 
 #define Z80_READ_WORD_INTERRUPT(address, x)	Z80_READ_WORD((address), (x))
